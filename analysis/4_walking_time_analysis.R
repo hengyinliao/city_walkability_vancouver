@@ -26,7 +26,7 @@
 #
 #  If config arguments are set correctly, you should not need to edit this script below
 #  line 30.
-DEFAULT_CONFIG_FILEPATH <- "/home/nathenry/repos/city_walkability/analysis/config.yaml"
+DEFAULT_CONFIG_FILEPATH <- "C:/Users/hengyinl.stu/Desktop/city_walkability/analysis/config.yaml"
 
 
 ## Setup -------------------------------------------------------------------------------->

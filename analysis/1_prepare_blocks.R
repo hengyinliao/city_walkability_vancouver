@@ -26,15 +26,18 @@
 #
 #  If config arguments are set correctly, you should not need to edit this script below
 #  line 30.
-DEFAULT_CONFIG_FILEPATH <- "~/repos/city_walkability/analysis/config.yaml"
+DEFAULT_CONFIG_FILEPATH <- "C:\\Users\\hengyinl.stu\\Desktop\\city_walkability\\analysis\\config.yaml"
 
 
 ## Setup -------------------------------------------------------------------------------->
 
 # Load all required packages
 load_packages <- c(
-  'argparse', 'elevatr', 'glue', 'sf', 'terra', 'tidycensus', 'tigris', 'units', 'yaml'
+  'argparse', 'elevatr', 'glue', 'sf', 'terra',
+  'tidycensus', 'tigris', 'units', 'yaml',
+  'ggplot2', 'viridisLite'
 )
+
 load_packages |> lapply(library, character.only = T) |> invisible()
 
 # Load config.yaml
@@ -64,33 +67,70 @@ options(tigris_use_cache = TRUE)
 
 # Set the coordinate reference system that will be used for all spatial data
 working_crs <- sf::st_crs(x = settings$working_crs)
+
 # Simple function to return the polygons to unprojected lat-long
 to_latlong <- function(obj) sf::st_transform(obj, crs = sf::st_crs(4326))
 
-# Check that there is a unique match for the state + county name
-fips_table <- tigris::fips_codes
-which_county <- which(
-  (fips_table$state_name == settings$state_name) &
-  (fips_table$county == settings$county_name)
-)
-if(length(which_county) == 0) stop(
-  "No match for state == '", settings$state_name, "' and county == '", 
-  settings$county_name, "'."
-)
-state_fips <- fips_table[which_county, 'state_code']
-county_fips <- fips_table[which_county, 'county_code']
+# ------------------------------------------------------------------------------
+# 1A. Choose how to get blocks:
+#   - US cities: use tidycensus + tigris (original code)
+#   - Non-US cities (e.g., Vancouver): read custom blocks from config
+# ------------------------------------------------------------------------------
 
-# Download census blocks in the county of interest
-blocks_sf <- tidycensus::get_decennial(
-  geography = 'block',
-  variables = "P1_001N", # Total population
-  year = settings$census_year,
-  state = state_fips,
-  county = county_fips,
-  geometry = TRUE,
-  cache_table = TRUE
-) |> sf::st_transform(crs = working_crs)
-names(blocks_sf)[names(blocks_sf) == 'value'] <- 'population'
+if (!is.null(settings$use_custom_blocks) && settings$use_custom_blocks) {
+  
+  message("Using custom blocks from: ", settings$custom_blocks_path)
+  
+  # Read your Vancouver polygons (e.g. DA boundaries)
+  blocks_sf <- sf::st_read(settings$custom_blocks_path) |>
+    sf::st_transform(crs = working_crs)
+  
+  # Map your ID + population fields to the columns expected by later scripts
+  id_field  <- settings$custom_blocks_id_field
+  pop_field <- settings$custom_blocks_pop_field
+  
+  if (!all(c(id_field, pop_field) %in% names(blocks_sf))) {
+    stop(
+      "custom_blocks_id_field or custom_blocks_pop_field not found in the layer.\n",
+      "Fields present are: ", paste(names(blocks_sf), collapse = ", ")
+    )
+  }
+  
+  blocks_sf$GEOID      <- blocks_sf[[id_field]]
+  blocks_sf$population <- blocks_sf[[pop_field]]
+  
+} else {
+  
+  # --------------------------------------------------------------------
+  # Original US-only path (unchanged) – uses tidycensus + tigris
+  # --------------------------------------------------------------------
+  fips_table <- tigris::fips_codes
+  which_county <- which(
+    (fips_table$state_name == settings$state_name) &
+      (fips_table$county == settings$county_name)
+  )
+  if (length(which_county) == 0) stop(
+    "No match for state == '", settings$state_name, "' and county == '",
+    settings$county_name, "'."
+  )
+  state_fips  <- fips_table[which_county, "state_code"]
+  county_fips <- fips_table[which_county, "county_code"]
+  
+  # Download census blocks in the county of interest
+  blocks_sf <- tidycensus::get_decennial(
+    geography = "block",
+    variables = "P1_001N", # Total population
+    year = settings$census_year,
+    state = state_fips,
+    county = county_fips,
+    geometry = TRUE,
+    cache_table = TRUE
+  ) |>
+    sf::st_transform(crs = working_crs)
+  
+  names(blocks_sf)[names(blocks_sf) == "value"] <- "population"
+}
+
 
 # Optionally subset to a particular city
 if(settings$subset_to_city){
@@ -114,7 +154,7 @@ if(settings$remove_water_bodies) blocks_sf <- tigris::erase_water(
 )
 
 # Drop blocks with small areas
-blocks_sf$block_area <- sf::st_area(blocks_sf$geometry)
+blocks_sf$block_area <- sf::st_area(blocks_sf)
 small_blocks <- which(units::drop_units(blocks_sf$block_area) <= settings$min_block_size)
 if(length(small_blocks) > 0){
   message("Dropping ", length(small_blocks), " blocks smaller than the area cutoff.")
@@ -151,7 +191,7 @@ pdf(
   height = 10,
   width = 10
 )
-plot(blocks_sf_simple$geometry |> to_latlong(), lwd = 0.2)
+plot(sf::st_geometry(blocks_sf_simple |> to_latlong()), lwd = 0.2)
 dev.off()
 
 message(
@@ -177,24 +217,28 @@ yaml::write_yaml(
 )
 
 # Download OSM data for the full state and save it in the raw data folder
-full_osm_path <- file.path(config$directories$raw_data, 'osm_extract_full.pbf') |>
-  normalizePath() |>
-  suppressWarnings()
-message("Downloading state-wide OSM extract")
+full_osm_path <- file.path(config$directories$raw_data, "osm_extract_full.pbf")
+
+message("Downloading OSM extract from: ", config$download_paths$osm_extract)
 utils::download.file(
-  url = config$download_paths$osm_extract,
+  url      = config$download_paths$osm_extract,
   destfile = full_osm_path,
-  method = 'auto'
+  mode     = "wb",      # IMPORTANT: binary mode on Windows
+  quiet    = FALSE
 )
+
 
 # Use the osmosis command line tool to crop the full extract file to the bounding box
 subset_osm_path <- file.path(config$directories$prepared_data, 'osm_subset.pbf') |>
   normalizePath() |>
   suppressWarnings()
-osmosis_command <- glue::glue(c(
-  "osmosis --read-pbf {full_osm_path} --bounding-box top='{bb$ymax}' left='{bb$xmin}' ",
-  "bottom='{bb$ymin}' right='{bb$xmax}' --write-pbf {subset_osm_path}"
-))
+osmosis_command <- glue::glue(
+  "osmosis --read-pbf {full_osm_path} ",
+  "--bounding-box top={bb$ymax} left={bb$xmin} ",
+  "bottom={bb$ymin} right={bb$xmax} ",
+  "--write-pbf {subset_osm_path}"
+)
+
 message("Running osmosis to subset the OSM file to the study area")
 system(osmosis_command)
 message("Finished downloading and subsetting OSM extract.")

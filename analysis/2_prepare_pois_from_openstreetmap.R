@@ -27,7 +27,7 @@
 #
 #  If config arguments are set correctly, you should not need to edit this script below
 #  line 30.
-DEFAULT_CONFIG_FILEPATH <- "~/repos/city_walkability/analysis/config.yaml"
+DEFAULT_CONFIG_FILEPATH <- "C:/Users/hengyinl.stu/Desktop/city_walkability/analysis/config.yaml"
 
 
 ## Setup -------------------------------------------------------------------------------->
@@ -35,6 +35,9 @@ DEFAULT_CONFIG_FILEPATH <- "~/repos/city_walkability/analysis/config.yaml"
 # Load all required packages
 load_packages <- c('argparse', 'data.table', 'httr', 'glue', 'yaml')
 load_packages |> lapply(library, character.only = T) |> invisible()
+
+library(osmdata)
+library(data.table)
 
 # Load config.yaml
 if(interactive()){
@@ -91,24 +94,83 @@ query_overpass <- function(tags){
 
 destination_types <- names(config$osm_destination_queries)
 
-destinations_table <- lapply(destination_types, function(d_type){
-  message("Querying the OpenStreetMap Overpass API for ", d_type, "...")
-  # Pull the Overpass API results, filtering on the tags for this destination type
-  osm_tags <- config$osm_destination_queries[[d_type]]
-  overpass_results <- query_overpass(osm_tags) |>
-    textConnection() |>
-    read.csv(sep = ',') |>
-    data.table::as.data.table() |>
-    na.omit(cols = c('X.lat', 'X.lon'))
-  # Keep only the key fields: name, latitude, longitude, address, destination type
-  formatted_locations <- (overpass_results
-    [, address := paste(addr.housenumber, addr.street, addr.city, addr.postcode)]
-    [, address := gsub(' +', ' ', address)]
-    [address == ' ', address := NA_character_ ]
-    [, .(name, lon = X.lon, lat = X.lat, address, type = d_type)]
+### Change 1 - fix outdated query_overpass()
+### helper (osm tag normalizer)
+normalize_osm_tags <- function(x, d_type = NA_character_) {
+  # Already a named list? Just return it
+  if (is.list(x) && !is.null(names(x))) {
+    return(x)
+  }
+  
+  # Character vector like "shop=supermarket" or c("shop=supermarket", "shop=superstore")
+  if (is.character(x)) {
+    parts <- strsplit(x, "=", fixed = TRUE)
+    keys  <- vapply(parts, `[`, character(1), 1)
+    vals  <- vapply(parts, `[`, character(1), 2)
+    
+    # Build a named list where each key can have multiple values
+    out <- split(vals, keys)
+    return(out)
+  }
+  
+  stop(
+    "OSM tags for ", d_type, " could not be interpreted.\n",
+    "Got type: ", paste(class(x), collapse = ", "),
+    ". Expected either a named list or character vector like 'key=value'."
   )
-  return(formatted_locations)
-}) |> rbindlist()
+}
+
+destinations_table <- lapply(destination_types, function(d_type) {
+  
+  message("Querying Overpass for ", d_type, "...")
+  
+  # Raw tags from config (could be list or character)
+  raw_osm_tags <- config$osm_destination_queries[[d_type]]
+  
+  if (is.null(raw_osm_tags)) {
+    stop("No OSM tags found in config.yaml for destination type: ", d_type)
+  }
+  
+  # Normalize to a named list: list(key = c("value1", "value2", ...))
+  osm_tags <- normalize_osm_tags(raw_osm_tags, d_type = d_type)
+  
+  # Load bbox
+  bb_list <- yaml::read_yaml(file.path(config$directories$prepared_data, "extended_bbox.yaml"))
+  bb <- c(bb_list$xmin, bb_list$ymin, bb_list$xmax, bb_list$ymax)
+  
+  # Build query
+  q <- opq(bb)
+  
+  # Add each key/value pair
+  for (key in names(osm_tags)) {
+    values <- osm_tags[[key]]
+    for (value in values) {
+      q <- add_osm_feature(q, key = key, value = value)
+    }
+  }
+  
+  # Run Overpass
+  res <- osmdata_sf(q)
+  pts <- res$osm_points
+  
+  if (is.null(pts) || nrow(pts) == 0) {
+    warning("No results for ", d_type)
+    return(NULL)
+  }
+  
+  formatted <- data.table(
+    name = pts$name,
+    lon = st_coordinates(pts)[, 1],
+    lat = st_coordinates(pts)[, 2],
+    address = pts$`addr:street`,
+    type = d_type
+  )
+  
+  return(formatted)
+}) |> data.table::rbindlist(fill = TRUE)
+
+
+
 
 # Summarize results
 message("Summary of results:")

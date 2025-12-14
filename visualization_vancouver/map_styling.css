@@ -1,0 +1,226 @@
+/* Global reset & design tokens */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+:root {
+  /* Premium light palette */
+  --bg-body: #f6f7fb;
+  --bg-card: rgba(255, 255, 255, 0.88);
+  --bg-card-strong: rgba(255, 255, 255, 0.96);
+
+  --accent: #1d4ed8;               /* royal blue */
+  --accent-soft: rgba(29, 78, 216, 0.08);
+  --accent-soft-2: rgba(99, 102, 241, 0.08);
+
+  --text-main: #0f172a;
+  --text-muted: rgba(15, 23, 42, 0.62);
+
+  --border-subtle: rgba(15, 23, 42, 0.10);
+  --border-softer: rgba(15, 23, 42, 0.06);
+
+  --radius-lg: 18px;
+  --radius-md: 14px;
+
+  /* Softer, premium shadows */
+  --shadow-soft: 0 18px 44px rgba(15, 23, 42, 0.10);
+  --shadow-subtle: 0 10px 26px rgba(15, 23, 42, 0.07);
+
+  --font-main: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* Page layout & typography */
+body {
+  margin: 0;
+  padding: 1.5rem;
+  font-family: var(--font-main);
+  color: var(--text-main);
+
+  /* Premium light background (subtle, formal) */
+  background:
+    radial-gradient(900px 600px at 15% 0%, rgba(29,78,216,0.10), transparent 55%),
+    radial-gradient(900px 600px at 85% 0%, rgba(99,102,241,0.08), transparent 55%),
+    linear-gradient(180deg, #f8fafc 0%, #f6f7fb 60%, #f3f4f6 100%);
+
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+/* Intro text */
+body > p {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+body > p em {
+  display: block;
+  padding: 0.95rem 1.15rem;
+
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-softer);
+  box-shadow: var(--shadow-subtle);
+
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  color: var(--text-muted);
+  font-style: normal;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+/* Controls form */
+#walkselect {
+  max-width: 1100px;
+  margin: 0.25rem auto 0.5rem auto;
+  padding: 0.9rem 1rem;
+
+  background: var(--bg-card-strong);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-subtle);
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 0.9rem;
+}
+
+/* Pill labels */
+#walkselect label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  padding: 0.42rem 0.85rem;
+  border-radius: 999px;
+
+  background: linear-gradient(180deg, rgba(29,78,216,0.08), rgba(29,78,216,0.05));
+  border: 1px solid rgba(29,78,216,0.14);
+
+  font-size: 0.9rem;
+  color: rgba(15, 23, 42, 0.88);
+  cursor: pointer;
+  user-select: none;
+
+  transition: transform 0.12s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+#walkselect label:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(180deg, rgba(29,78,216,0.12), rgba(99,102,241,0.08));
+  border-color: rgba(29,78,216,0.22);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.10);
+}
+
+/* Premium checkbox: keep native but refined */
+#walkselect input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Map container */
+.leafmap {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto 0.5rem auto;
+  height: 75vh;
+  min-height: 440px;
+  max-height: 920px;
+
+  background: #e5e7eb;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+
+  /* Premium frame */
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Leaflet info control (glass card) */
+.leafinfo {
+  padding: 10px 12px;
+  font: 12.5px/1.45 var(--font-main);
+
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  border-radius: 14px;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.14);
+
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  color: rgba(15, 23, 42, 0.92);
+}
+
+.leafinfo h4 {
+  margin: 0 0 6px;
+  font-size: 0.82rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* Moveable info/control box */
+.movebox { min-width: 190px; }
+
+.movebox h4 {
+  margin: 0 0 6px;
+  font: 11px/1.4 var(--font-main);
+  color: rgba(15, 23, 42, 0.50);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.movebox p {
+  padding: 0;
+  margin: 4px 0 0 0;
+  font-size: 10.5px;
+  color: rgba(15, 23, 42, 0.62);
+}
+
+/* Legend styling (more “product”) */
+.leaflegend {
+  line-height: 1.45;
+  font-size: 11px;
+  color: rgba(15, 23, 42, 0.88);
+}
+
+.leaflegend b {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  border-radius: 5px;
+  margin-right: 7px;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+/* Remove list bullets when used */
+.blank-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+/* Leaflet default controls: match premium cards */
+.leaflet-control-zoom a {
+  border-radius: 12px !important;
+  border: 1px solid rgba(15, 23, 42, 0.12) !important;
+  background: rgba(255, 255, 255, 0.90) !important;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.10) !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: rgba(29,78,216,0.08) !important;
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  body { padding: 1rem; }
+  body > p em { font-size: 0.9rem;
+
