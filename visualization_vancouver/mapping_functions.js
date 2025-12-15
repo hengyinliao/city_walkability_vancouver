@@ -13,7 +13,7 @@
   Function: Create a leaflet map with one base layer and two overlay layers
 */
 function create_choro_map_base(
-  map_div_id, ctr = [0,0], bounds = null, minZoom = 0, maxZoom = 20, startZoom = 12,
+  map_div_id, ctr = [0,0], bounds = null, minZoom = 0, maxZoom = 20, startZoom = 8,
   attr_addon = ''
 ){
   // Create basemap
@@ -23,7 +23,7 @@ function create_choro_map_base(
       center: ctr, maxBounds: bounds, minZoom: minZoom, maxZoom: maxZoom, zoomDelta: .5,
       keyboardPanDelta: 40, inertia: 1, zoomControl: false
     }
-  ).setView(center = ctr, zoom = startZoom);
+  ).setView(center = [49.2825,-123.1090], zoom = startZoom);
 
   // Attribution needed for the map tile layers, plus an optional add-on
   var attr = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors' +

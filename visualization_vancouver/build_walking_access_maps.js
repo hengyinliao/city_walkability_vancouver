@@ -69,8 +69,8 @@ for(dest in destination_labels){
 }
 
 var map_terms = [];
-if(destinations_array.includes('supermarkets')){
-  map_terms.push('supermarkets');
+if(destinations_array.includes('coffee_shops')){
+  map_terms.push('coffee_shops');
 } else {
   map_terms.push(destinations_array[0]);
 }
